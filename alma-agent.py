@@ -22,7 +22,7 @@ GITHUB_REPO = "gestlifedev/alma-agent"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
 DEFAULT_CONFIG = {
-    "server_host": "46.27.219.187",
+    "server_host": "ai.gestlife.com",
     "server_port": 9555,
     "agent_name": socket.gethostname(),
     "retry_seconds": 10,

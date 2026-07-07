@@ -4,7 +4,7 @@
 #   powershell -ExecutionPolicy Bypass -File install-alma.ps1
 
 param(
-    [string]$ServerHost = "46.27.219.187",
+    [string]$ServerHost = "ai.gestlife.com",
     [int]$ServerPort = 9555,
     [string]$AgentName = $env:COMPUTERNAME
 )
