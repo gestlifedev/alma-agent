@@ -63,14 +63,12 @@ if exist "python-embed.zip" (
     exit /b 1
 )
 
-:: Configurar Python embebido para usar pip y imports
-echo. > "%INSTALL_DIR%\python\python311._pth"
-(
-echo python311.zip
-echo .
-echo Lib
-echo Lib\site-packages
-) > "%INSTALL_DIR%\python\python311._pth"
+:: Configurar Python embebido - mantener el _pth original, solo añadir import site
+:: El python311.zip ya contiene toda la stdlib, no se necesitan Lib/Lib\site-packages
+if exist "%INSTALL_DIR%\python\python311._pth" (
+    :: Asegurar que import site esté activo (necesario para asyncio y otras cosas)
+    powershell -Command "(Get-Content '%INSTALL_DIR%\python\python311._pth') -replace '#import site', 'import site' | Set-Content '%INSTALL_DIR%\python\python311._pth'" -ErrorAction SilentlyContinue
+)
 
 :: 3. Copiar archivos del agente
 echo   [3/5] Copiando agente...
@@ -93,20 +91,25 @@ echo }
 :: 4. Crear Scheduled Task (inicio automático + persistencia)
 echo   [4/5] Configurando inicio automático...
 
-:: Usar pythonw.exe para que NO haya ventana de consola
-set PYTHONW=%INSTALL_DIR%\python\pythonw.exe
-set AGENT_PATH=%INSTALL_DIR%\alma-agent.py
+:: Crear wrapper batch para el Scheduled Task (necesita cd al directorio)
+set WRAPPER=%INSTALL_DIR%\start-alma.bat
+(
+echo @echo off
+echo cd /d "%INSTALL_DIR%"
+echo start "" /B "%INSTALL_DIR%\python\pythonw.exe" "%INSTALL_DIR%\alma-agent.py"
+) > "%WRAPPER%"
+
+:: Dar permisos de escritura a SYSTEM en el directorio (para logs)
+icacls "%INSTALL_DIR%" /grant "SYSTEM:(OI)(CI)F" /T /Q >nul 2>&1
+
+:: Eliminar tareas anteriores
+schtasks /Delete /TN "ALMA Agent" /F >nul 2>&1
+schtasks /Delete /TN "ALMA Agent Watchdog" /F >nul 2>&1
 
 :: Scheduled Task: SYSTEM, al inicio, reinicio si falla
-schtasks /Create /TN "ALMA Agent" /SC ONSTART /RU SYSTEM /RL HIGHEST /TR "\"%PYTHONW%\" \"%AGENT_PATH%\"" /F /DELAY 0000:30 >nul 2>&1
-if %errorlevel% neq 0 (
-    schtasks /Create /TN "ALMA Agent" /SC ONSTART /RU SYSTEM /TR "\"%PYTHONW%\" \"%AGENT_PATH%\"" /F >nul 2>&1
-)
+schtasks /Create /TN "ALMA Agent" /SC ONSTART /RU SYSTEM /RL HIGHEST /TR "\"%WRAPPER%\"" /F >nul 2>&1
 
-:: Configurar restart en failure (si se mata el proceso)
-schtasks /Change /TN "ALMA Agent" /RL HIGHEST >nul 2>&1
-
-:: Tarea adicional: cada 5 min verificar que esté corriendo
+:: Tarea watchdog: cada 5 min verifica que esté corriendo
 schtasks /Create /TN "ALMA Agent Watchdog" /SC MINUTE /MO 5 /RU SYSTEM /TR "schtasks /Run /TN \"ALMA Agent\"" /F >nul 2>&1
 
 :: 5. Iniciar ahora
