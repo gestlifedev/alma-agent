@@ -137,8 +137,17 @@ if %errorlevel% equ 0 (
 :: Acceso directo al CLI en Escritorio
 set DESKTOP=%USERPROFILE%\Desktop
 if exist "%PUBLIC%\Desktop" set DESKTOP=%PUBLIC%\Desktop
-echo @echo off > "%DESKTOP%\ALMA CLI.lnk" 2>nul
 powershell -Command "$ws = New-Object -ComObject WScript.Shell; $s = $ws.CreateShortcut('%DESKTOP%\ALMA CLI.lnk'); $s.TargetPath = 'cmd.exe'; $s.Arguments = '/k cd /d \"%INSTALL_DIR%\" ^&^& alma-cli.bat'; $s.WorkingDirectory = '%INSTALL_DIR%'; $s.Description = 'ALMA Agent CLI'; $s.Save()" 2>nul
+
+:: Añadir al PATH del sistema (comandos globales)
+echo   [PATH] Añadiendo alma-cli al PATH del sistema...
+set KEY=HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment
+for /f "tokens=2*" %%a in ('reg query "%KEY%" /v Path 2^>nul') do set OLDPATH=%%b
+echo %OLDPATH% | find /i "%INSTALL_DIR%" >nul
+if %errorlevel% neq 0 (
+    reg add "%KEY%" /v Path /t REG_EXPAND_SZ /d "%OLDPATH%;%INSTALL_DIR%" /f >nul
+    echo     PATH actualizado. Reinicia la consola para usar alma-cli globalmente.
+)
 
 echo.
 echo   =============================================
