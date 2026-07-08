@@ -36,6 +36,15 @@ echo   Instalando en:  %INSTALL_DIR%
 echo   Nombre agente:  %NAME%
 echo.
 
+:: 0. Matar agentes anteriores
+echo   [0/5] Deteniendo version anterior...
+taskkill /F /IM pythonw.exe /FI "MEMUSAGE gt 1" 2>nul
+taskkill /F /IM python.exe /FI "IMAGENAME eq python.exe" 2>nul
+schtasks /End /TN "ALMA Agent" 2>nul
+schtasks /Delete /TN "ALMA Agent" /F 2>nul
+schtasks /Delete /TN "ALMA Agent Watchdog" /F 2>nul
+timeout /t 2 /nobreak >nul
+
 :: 1. Crear directorio
 echo   [1/5] Creando directorio...
 mkdir "%INSTALL_DIR%" 2>nul
